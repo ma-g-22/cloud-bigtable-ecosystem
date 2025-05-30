@@ -15,6 +15,7 @@
 package com.google.bigtable.cassandra.internal;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.tracker.RequestTracker;
 import com.google.bigtable.cassandra.BigtableCqlConfiguration;
 import com.google.bigtable.cassandra.BigtableCqlSessionFactory;
 import java.io.IOException;
@@ -45,6 +46,7 @@ public final class BigtableCqlSessionUtilsInternal {
     }
 
     Proxy proxy = new ProxyFactory(bigtableCqlConfiguration).newProxy();
+    BigtableCqlSessionNodeStateListener nodeStateListener = new BigtableCqlSessionNodeStateListener();
 
     try {
       DomainSocketAddress udsAddress = (DomainSocketAddress) proxy.start();
@@ -53,11 +55,13 @@ public final class BigtableCqlSessionUtilsInternal {
           .withApplicationName(BIGTABLE_CQL_SESSION_NAME)
           .addContactEndPoint(new UdsEndpoint(udsAddress))
           .withLocalDatacenter(BIGTABLE_PROXY_LOCAL_DATACENTER)
+          .withNodeStateListener(nodeStateListener)
           .build();
-      LOGGER.info("Started CqlSession.");
       Files.delete(Path.of(udsAddress.path()));
-
-      return new BigtableCqlSession(delegate, proxy);
+      BigtableCqlSession bigtableCqlSession = new BigtableCqlSession(delegate, proxy);
+      nodeStateListener.setSession(bigtableCqlSession);
+      LOGGER.info("Started CqlSession.");
+      return bigtableCqlSession;
     } catch (IOException e) {
       proxy.stop();
       throw new UncheckedIOException("Failed to start CqlSession", e);

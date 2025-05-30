@@ -22,7 +22,6 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.management.ManagementFactory;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
@@ -57,8 +56,10 @@ class ProxyImpl implements Proxy {
   private static final String PROXY_BINARY_NAME = "cassandra-to-bigtable-proxy";
   private static final String PROXY_CONFIG_FILENAME = "config.yaml";
   private static final String UDS_FILENAME = "cassandra-proxy.sock";
-  private static final Set<PosixFilePermission> PERMS_700 = PosixFilePermissions.fromString("rwx------");
-  private static final Set<PosixFilePermission> PERMS_600 = PosixFilePermissions.fromString("rw-------");
+  private static final Set<PosixFilePermission> PERMS_700 = PosixFilePermissions.fromString(
+      "rwx------");
+  private static final Set<PosixFilePermission> PERMS_600 = PosixFilePermissions.fromString(
+      "rw-------");
   private static final String BIGTABLE_PROXY_LOCAL_DATACENTER = "bigtable-proxy-local-datacenter";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ProxyImpl.class);
@@ -77,7 +78,8 @@ class ProxyImpl implements Proxy {
    * Internal use only.
    */
   protected ProxyImpl(BigtableCqlConfiguration bigtableCqlConfiguration) {
-    Preconditions.checkNotNull(bigtableCqlConfiguration, "Valid BigtableCqlConfig must be supplied");
+    Preconditions.checkNotNull(bigtableCqlConfiguration,
+        "Valid BigtableCqlConfig must be supplied");
     this.bigtableCqlConfiguration = bigtableCqlConfiguration;
   }
 
@@ -93,14 +95,11 @@ class ProxyImpl implements Proxy {
   }
 
   private void setupProxy() throws IOException {
-    // Create temp directory
     tempProxyDir = Files.createTempDirectory(null, PosixFilePermissions.asFileAttribute(PERMS_700));
     tempProxyDir.toFile().deleteOnExit();
 
-    // Copy proxy binary to temp directory
     Path proxyExecutablePath = copyProxyBinaryToTempDir(tempProxyDir);
 
-    // Write proxy config to temp directory
     ProxyConfig proxyConfig = ProxyConfigUtils.createProxyConfig(bigtableCqlConfiguration);
     Path proxyConfigFilePath = createProxyConfigFile(proxyConfig, tempProxyDir);
 
@@ -110,10 +109,8 @@ class ProxyImpl implements Proxy {
 
   private Path createProxyConfigFile(ProxyConfig proxyConfig, Path tempProxyDir)
       throws IOException {
-    // Serialize proxy config to YAML
     String proxyConfigContents = proxyConfig.toYaml();
 
-    // Write proxy config to temp dir
     Path configTempPath = tempProxyDir.resolve(PROXY_CONFIG_FILENAME);
     Files.createFile(configTempPath, PosixFilePermissions.asFileAttribute(PERMS_600));
     configTempPath.toFile().deleteOnExit();
@@ -201,7 +198,8 @@ class ProxyImpl implements Proxy {
     command.add(proxyExecutablePath.toAbsolutePath().toString());
 
     // Add config file path argument
-    if (proxyConfigFilePath == null || proxyConfigFilePath.toAbsolutePath().toString().trim().isEmpty()) {
+    if (proxyConfigFilePath == null || proxyConfigFilePath.toAbsolutePath().toString().trim()
+        .isEmpty()) {
       throw new IllegalArgumentException("No proxy configuration file specified");
     }
     command.add("-f");
@@ -282,7 +280,7 @@ class ProxyImpl implements Proxy {
         isProxyProcessListening.complete(false);
       }
     });
-    outputConsumerThread.setDaemon(true);  // Make it a daemon thread
+    outputConsumerThread.setDaemon(true);
     outputConsumerThread.start();
   }
 
@@ -303,14 +301,15 @@ class ProxyImpl implements Proxy {
         }
       }
     });
-    errorOutputConsumerThread.setDaemon(true);  // Make it a daemon thread
+    errorOutputConsumerThread.setDaemon(true);
     errorOutputConsumerThread.start();
   }
 
   private void waitForProxyProcessToStartup() {
     LOGGER.debug("Waiting for proxy process to start");
     try {
-      boolean proxyStarted = isProxyProcessListening.get(PROXY_STARTUP_TIMEOUT_SECS.getSeconds(), TimeUnit.SECONDS);
+      boolean proxyStarted = isProxyProcessListening.get(PROXY_STARTUP_TIMEOUT_SECS.getSeconds(),
+          TimeUnit.SECONDS);
       if (!proxyStarted) {
         throw new IllegalStateException("Proxy process failed to start");
       }
