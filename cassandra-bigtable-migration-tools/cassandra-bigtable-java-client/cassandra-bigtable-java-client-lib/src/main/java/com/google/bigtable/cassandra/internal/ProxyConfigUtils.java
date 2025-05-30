@@ -43,12 +43,11 @@ final class ProxyConfigUtils {
   private static final String LOGGER_STDOUT = "stdout";
   private static final String DEFAULT_LISTENER_NAME = "cluster1";
 
-  static ProxyConfig createProxyConfig(BigtableCqlConfiguration bigtableCqlConfiguration,
-      int proxyPort) {
+  static ProxyConfig createProxyConfig(BigtableCqlConfiguration bigtableCqlConfiguration) {
     CassandraToBigTableConfig cassandraToBigTableConfig = createCassandraToBigTableConfig(
         bigtableCqlConfiguration);
     LoggerConfig loggerConfig = createLoggerConfig();
-    List<Listener> listeners = createListeners(bigtableCqlConfiguration, proxyPort);
+    List<Listener> listeners = createListeners(bigtableCqlConfiguration);
     OtelConfig otel = createOtelConfig(bigtableCqlConfiguration);
 
     return ProxyConfig.builder()
@@ -74,11 +73,9 @@ final class ProxyConfigUtils {
     return new LoggerConfig(LOGGER_STDOUT);
   }
 
-  static private List<Listener> createListeners(BigtableCqlConfiguration bigtableCqlConfiguration,
-      int proxyPort) {
+  static private List<Listener> createListeners(BigtableCqlConfiguration bigtableCqlConfiguration) {
     Listener e = Listener.builder()
         .name(DEFAULT_LISTENER_NAME)
-        .port(proxyPort)
         .bigtable(Bigtable.builder()
             .projectId(bigtableCqlConfiguration.getProjectId())
             .instanceIds(bigtableCqlConfiguration.getInstanceId())

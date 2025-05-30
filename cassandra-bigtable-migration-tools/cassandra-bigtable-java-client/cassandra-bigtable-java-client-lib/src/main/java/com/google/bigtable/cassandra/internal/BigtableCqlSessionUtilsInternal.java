@@ -19,10 +19,11 @@ import com.google.bigtable.cassandra.BigtableCqlConfiguration;
 import com.google.bigtable.cassandra.BigtableCqlSessionFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.netty.channel.unix.DomainSocketAddress;
 
 /**
  * Internal use only. Use {@link BigtableCqlSessionFactory} instead.
@@ -46,15 +47,15 @@ public final class BigtableCqlSessionUtilsInternal {
     Proxy proxy = new ProxyFactory(bigtableCqlConfiguration).newProxy();
 
     try {
-      SocketAddress address = proxy.start();
-
+      DomainSocketAddress udsAddress = (DomainSocketAddress) proxy.start();
       LOGGER.info("Starting CqlSession...");
-      CqlSession delegate = CqlSession.builder()
+      CqlSession delegate = new UdsCqlSessionBuilder()
           .withApplicationName(BIGTABLE_CQL_SESSION_NAME)
-          .addContactPoint((InetSocketAddress) address)
+          .addContactEndPoint(new UdsEndpoint(udsAddress))
           .withLocalDatacenter(BIGTABLE_PROXY_LOCAL_DATACENTER)
           .build();
       LOGGER.info("Started CqlSession.");
+      Files.delete(Path.of(udsAddress.path()));
 
       return new BigtableCqlSession(delegate, proxy);
     } catch (IOException e) {
